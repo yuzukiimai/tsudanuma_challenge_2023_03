@@ -35,7 +35,7 @@ class nav_cloning_node:
         self.cv_image = np.zeros((480,640,3), np.uint8)
         self.cv_left_image = np.zeros((480,640,3), np.uint8)
         self.cv_right_image = np.zeros((480,640,3), np.uint8)
-        self.learning = True
+        self.navigation = True
         self.is_started = False
         self.waypoint_flg = rospy.Subscriber("/waypoint_manager/waypoint/is_reached", Bool, self.callback_dl_output)
         self.goal = False
@@ -61,7 +61,8 @@ class nav_cloning_node:
 
     def callback_vel(self, data):
         self.vel = data
-        self.action = self.vel.angular.z
+        self.action = self.vel
+        # self.action = self.vel.angular.z
 
     def callback_dl_output(self, data):
         self.goal = data.data
@@ -92,20 +93,32 @@ class nav_cloning_node:
         img_right = resize(self.cv_right_image, (48, 64), mode='constant')
         
         if self.count > 8:
-            self.learning = False
+            self.navigation = False
             self.dl.load("/home/yuzuki/model_gpu.pt")
-            
-        if self.episode == 5700:
-            os.system('killall roslaunch')
-            sys.exit()
 
-        if self.learning:
+        if self.episode > 700:
+            self.navigation = True
+           
+        if self.count > 17:
+            self.navigation = False
+            self.dl.load("/home/yuzuki/model_gpu.pt")
+
+        if self.episode > 1700:
+            self.navigation = True
+
+        # if self.episode == 10000:
+        #     os.system('killall roslaunch')
+        #     sys.exit()
+
+        if self.navigation:
             target_action = self.action
-            self.episode += 1
-            self.vel.linear.x = 0.5
-            self.vel.angular.z = target_action
+            # self.episode += 1
+            # self.vel.linear.x = 0.3
+            # self.vel.angular.z = target_action
+            self.vel = target_action
             self.nav_pub.publish(self.vel)
-            print(str(self.episode) + ", navigation")
+            # print(str(self.episode) + ", navigation")
+            print("navigation")
 
         else:
             target_action = self.dl.act(img)
